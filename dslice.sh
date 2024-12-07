@@ -28,8 +28,8 @@ print_registry_tag() {
 # push [TAG1] [TAG2]... [TAGN]: push one or more images into registry
 push_images() {
   echod "Pushing to the registry..."
-  for $HOST_TAG in "$@"; do
-    REGISTRY_TAG=$DSLICE_URL/$(print_registry_tag HOST_TAG)
+  for HOST_TAG in "$@"; do
+    REGISTRY_TAG=$DSLICE_URL/$(print_registry_tag $HOST_TAG)
     docker tag $HOST_TAG $REGISTRY_TAG > /dev/null
     docker push $REGISTRY_TAG
     docker rmi $REGISTRY_TAG > /dev/null
@@ -41,7 +41,7 @@ push_images() {
 pull_images() {
   echod "Pulling from the registry..."
   for HOST_TAG in "$@"; do
-    REGISTRY_TAG=$DSLICE_URL/$(print_registry_tag HOST_TAG)
+    REGISTRY_TAG=$DSLICE_URL/$(print_registry_tag $HOST_TAG)
     docker pull $REGISTRY_TAG 
     docker tag $REGISTRY_TAG $HOST_TAG > /dev/null
     docker rmi $REGISTRY_TAG > /dev/null

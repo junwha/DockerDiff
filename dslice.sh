@@ -96,8 +96,10 @@ save_image() {
   echo $TARGET_BLOBS
 
   echod "Copying the files..."
+  USER_DIR=$(pwd)
+  OUTPUT_DIR_NAME=".dslice-image"
+  OUTPUT_DIR="$USER_DIR/$OUTPUT_DIR_NAME"
   cd $DSLICE_REGISTRY_HOME
-  OUTPUT_DIR=".dslice-image"
   rm -rf $OUTPUT_DIR && mkdir -p $OUTPUT_DIR/blobs $OUTPUT_DIR/manifest
 
   # Copy the target manifest and blobs
@@ -106,15 +108,16 @@ save_image() {
     BLOB_DIR=${BLOB_DATA_DIR%%/data}
     cp -r $BLOB_DIR $OUTPUT_DIR/blobs
   done
-  echo $VERSION > VERSION
+  echo $VERSION > $OUTPUT_DIR/VERSION
 
   echod "Archiving..."
-  tar -cf ${TAG_BASE}-${VERSION}.tar.gz $OUTPUT_DIR
+  cd $USER_DIR
+  tar -cf ${TAG_BASE}-${VERSION}.tar.gz $OUTPUT_DIR_NAME
 
   rm -rf $OUTPUT_DIR
 
   docker rmi $REGISTRY_TAG > /dev/null
-  echod "Done. The output image archive is located in $DSLICE_REGISTRY_HOME/${TAG_BASE}-${VERSION}.tar.gz"
+  echod "Done. The output image archive is located in $USER_DIR/${TAG_BASE}-${VERSION}.tar.gz"
 }
 
 # build [docker build args]: 
@@ -140,7 +143,7 @@ load_image() {
   echod "Loading image from $IMAGE_TARBALL..."
   OUTPUT_DIR=".dslice-image"
   rm -rf $OUTPUT_DIR
-  cd $DSLICE_REGISTRY_HOME && tar -xvf $IMAGE_TARBALL 
+  tar -xf $IMAGE_TARBALL 
 
   IMAGE_NAME=$(ls $OUTPUT_DIR/manifest)
   IMAGE_VERSION=$(cat $OUTPUT_DIR/VERSION)

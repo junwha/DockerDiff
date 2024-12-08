@@ -1,0 +1,2 @@
+FROM dslice-test:base
+COPY b /

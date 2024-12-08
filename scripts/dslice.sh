@@ -215,7 +215,7 @@ load_image() {
   docker pull $REGISTRY_TAG
   docker tag $REGISTRY_TAG $HOST_TAG
   docker rmi $REGISTRY_TAG
-  echod "Done. the image $HOST_TAG was pulled on the host."
+  echod "Done. the image $HOST_TAG was pulled on the host.\nIf you will not inherit $HOST_TAG in future, you can delete the image (dslice delete $HOST_TAG)."
 }
 
 ##################################################################################################################################################

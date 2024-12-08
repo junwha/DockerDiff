@@ -32,7 +32,8 @@ print_registry_tag() {
 ################################################################# Registry (Base) ################################################################
 ##################################################################################################################################################
 run_base() {
-  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
+  DSLICE_REGISTRY_HOME=${1:-$(pwd)/dslice-registry-volume}
+  docker run -it -d -p$DSLICE_PORT:5000 -v$DSLICE_REGISTRY_HOME:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
 }
 
 # base save [base tarball path]: save dslice registry with base images as a tarball 

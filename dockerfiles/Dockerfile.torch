@@ -1,0 +1,10 @@
+ARG PY_VERSION=3.12
+ARG TORCH_VERSION
+ARG TORCH_VISION_VERSION
+
+FROM junwha/dslice-base-py:${PY_VERSION}
+
+ARG TORCH_VERSION
+ARG TORCH_VISION_VERSION
+RUN conda init && \
+    pip install torch==$TORCH_VERSION torchvision==$TORCH_VISION_VERSION torchaudio==$TORCH_VERSION --index-url https://download.pytorch.org/whl/cu$(cat /CUDA_VERSION | awk -F. '{print $1$2}')

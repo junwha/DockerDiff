@@ -1,0 +1,38 @@
+ARG DOCKER_CUDA_VERSION 11.8.0
+FROM nvidia/cuda:${DOCKER_CUDA_VERSION}-cudnn8-devel-ubuntu22.04
+
+ARG DOCKER_CUDA_VERSION
+
+# For A100
+ENV TORCH_CUDA_ARCH_LIST 8.0 
+
+ENV DEBIAN_FRONTEND noninteractive
+
+ENV CUDA_HOME /usr/local/cuda
+ENV SETUPTOOLS_USE_DISTUTILS stdlib
+
+RUN apt-get update -y
+
+# Build tools
+RUN apt-get install -y gcc-12 g++-12 ninja-build cmake build-essential autoconf libtool automake git
+
+# Utils
+RUN apt-get install -y vim git bzip2 tmux wget tar htop
+
+# Conda
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh && \
+    chmod +x ./Anaconda3-2024.10-1-Linux-x86_64.sh && \
+    ./Anaconda3-2024.10-1-Linux-x86_64.sh -b && \
+    rm ./Anaconda3-2024.10-1-Linux-x86_64.sh
+ENV PATH /root/anaconda3/bin:$PATH
+
+RUN echo "$DOCKER_CUDA_VERSION" > /CUDA_VERSION
+
+# SSH
+RUN apt-get install -y ssh openssh-server
+RUN mkdir -p /var/run/sshd
+RUN echo "root:root" | chpasswd
+RUN echo "Port 22" >> /etc/ssh/sshd_config
+RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+EXPOSE 22
+

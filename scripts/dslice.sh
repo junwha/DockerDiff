@@ -172,7 +172,7 @@ load_image() {
   echod "Done. the image $HOST_TAG was pulled on the host."
 }
 
-# base save [base tarball path]:  
+# base save [base tarball path]: save dslice registry with base images as a tarball 
 save_base() {
   TARBALL_PATH=${1:-.}
   TEMP_PATH=".dslice-base"
@@ -188,7 +188,7 @@ save_base() {
   echod "Done. please move $TARBALL_PATH/dslice-base.tar.gz to the offline server, and execute the base load command (e.g., dslice base load dslice-base.tar.gz)"
 }
 
-# base load [base tarball] [install directory]:  
+# base load [base tarball] [install directory]: load dslice registry from the tarball
 load_base() {
   TARBALL=$1
   INSTALL_DIR=${2:-./}

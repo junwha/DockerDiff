@@ -49,6 +49,7 @@ pull_images() {
   echod "Done."
 }
 
+# delete [TAG1]: delete the specified image from registry
 delete_image() {
   # Split tag into base name and version
   REGISTRY_TAG=$(print_registry_tag $1)

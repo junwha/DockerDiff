@@ -5,7 +5,8 @@ An efficient Docker image transfer system that extracts and merges necessary ima
 
 # Usage (will be updated)
 ./dslice {bsae|push|pull|delete|save|build|load}
-- base {save|load} 
+- base {save|load}
+    - run: run empty dslice registry (online server)
     - save [base tarball path]: save dslice registry with base images as a tarball
     - load [base tarball] ([install directory]): load dslice registry from the tarball 
 - push [TAG1] [TAG2]... [TAGN]: push one or more images into the registry

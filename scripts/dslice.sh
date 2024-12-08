@@ -172,6 +172,10 @@ load_image() {
   echod "Done. the image $HOST_TAG was pulled on the host."
 }
 
+run_base() {
+  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
+}
+
 # base save [base tarball path]: save dslice registry with base images as a tarball 
 save_base() {
   TARBALL_PATH=${1:-.}
@@ -204,6 +208,7 @@ load_base() {
   echod "Done. Registry container $DSLICE_CONTAINER_NAME is now running on port $DSLICE_PORT."
 }
 
+
 case $1 in
   push)
     shift
@@ -232,6 +237,10 @@ case $1 in
   base)
     shift
     case $1 in
+      run)
+        shift
+        run_base "$@"
+        ;;
       save)
         shift
         save_base "$@"
@@ -241,7 +250,7 @@ case $1 in
         load_base "$@"
         ;;
       *)
-        echo "Usage: $0 base {save|load}"
+        echo "Usage: $0 base {run|save|load}"
         exit 1
         ;;
     esac

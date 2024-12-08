@@ -5,6 +5,9 @@ DSLICE_PORT=${DSLICE_PORT:-5000}
 DSLICE_URL=localhost:$DSLICE_PORT
 DSLICE_CONTAINER_NAME=${DSLICE_CONTAINER_NAME:-dslice-registry}
 
+##################################################################################################################################################
+###################################################################### Utils #####################################################################
+##################################################################################################################################################
 
 echod() {
   echo -e "[DSlice]" "$@"
@@ -25,6 +28,48 @@ print_registry_tag() {
   echo $TAG
 }
 
+##################################################################################################################################################
+################################################################# Registry (Base) ################################################################
+##################################################################################################################################################
+run_base() {
+  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
+}
+
+# base save [base tarball path]: save dslice registry with base images as a tarball 
+save_base() {
+  TARBALL_PATH=${1:-.}
+  TEMP_PATH=".dslice-base"
+  set_registry_home
+
+  cd $TARBALL_PATH
+  echod "Archiving registry image and volume"
+  rm -rf $TEMP_PATH && mkdir -p $TEMP_PATH
+  docker save -o $TEMP_PATH/registry.tar registry:2.8.3
+  cp -r $DSLICE_REGISTRY_HOME $TEMP_PATH/dslice-registry-volume
+  tar -cf dslice-base.tar.gz .dslice-base
+  rm -rf $TEMP_PATH
+  echod "Done. please move $TARBALL_PATH/dslice-base.tar.gz to the offline server, and execute the base load command (e.g., dslice base load dslice-base.tar.gz)"
+}
+
+# base load [base tarball] [install directory]: load dslice registry from the tarball
+load_base() {
+  TARBALL=$1
+  INSTALL_DIR=${2:-./}
+  
+  echod "Extract tarball $TARBALL to $INSTALL_DIR..."
+  tar -xf $TARBALL -C $INSTALL_DIR
+  cd $INSTALL_DIR
+  echod "Setting up registry container..."
+  docker load -i ./.dslice-base/registry.tar
+  mv ./.dslice-base/dslice-registry-volume ./
+  rm -rf .dslice-base
+  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
+  echod "Done. Registry container $DSLICE_CONTAINER_NAME is now running on port $DSLICE_PORT."
+}
+
+##################################################################################################################################################
+##################################################################### Image ######################################################################
+##################################################################################################################################################
 # push [TAG1] [TAG2]... [TAGN]: push one or more images into registry
 push_images() {
   echod "Pushing to the registry..."
@@ -172,43 +217,9 @@ load_image() {
   echod "Done. the image $HOST_TAG was pulled on the host."
 }
 
-run_base() {
-  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
-}
-
-# base save [base tarball path]: save dslice registry with base images as a tarball 
-save_base() {
-  TARBALL_PATH=${1:-.}
-  TEMP_PATH=".dslice-base"
-  set_registry_home
-
-  cd $TARBALL_PATH
-  echod "Archiving registry image and volume"
-  rm -rf $TEMP_PATH && mkdir -p $TEMP_PATH
-  docker save -o $TEMP_PATH/registry.tar registry:2.8.3
-  cp -r $DSLICE_REGISTRY_HOME $TEMP_PATH/dslice-registry-volume
-  tar -cf dslice-base.tar.gz .dslice-base
-  rm -rf $TEMP_PATH
-  echod "Done. please move $TARBALL_PATH/dslice-base.tar.gz to the offline server, and execute the base load command (e.g., dslice base load dslice-base.tar.gz)"
-}
-
-# base load [base tarball] [install directory]: load dslice registry from the tarball
-load_base() {
-  TARBALL=$1
-  INSTALL_DIR=${2:-./}
-  
-  echod "Extract tarball $TARBALL to $INSTALL_DIR..."
-  tar -xf $TARBALL -C $INSTALL_DIR
-  cd $INSTALL_DIR
-  echod "Setting up registry container..."
-  docker load -i ./.dslice-base/registry.tar
-  mv ./.dslice-base/dslice-registry-volume ./
-  rm -rf .dslice-base
-  docker run -it -d -p$DSLICE_PORT:5000 -v$(pwd)/dslice-registry-volume:/var/lib/registry --name $DSLICE_CONTAINER_NAME registry:2.8.3
-  echod "Done. Registry container $DSLICE_CONTAINER_NAME is now running on port $DSLICE_PORT."
-}
-
-
+##################################################################################################################################################
+#################################################################### Parser ######################################################################
+##################################################################################################################################################
 case $1 in
   push)
     shift

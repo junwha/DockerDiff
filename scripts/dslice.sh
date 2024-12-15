@@ -47,7 +47,7 @@ save_base() {
   rm -rf $TEMP_PATH && mkdir -p $TEMP_PATH
   docker save -o $TEMP_PATH/registry.tar registry:2.8.3
   cp -r $DSLICE_REGISTRY_HOME $TEMP_PATH/dslice-registry-volume
-  tar -cf dslice-base.tar.gz .dslice-base
+  tar -cvf dslice-base.tar .dslice-base
   rm -rf $TEMP_PATH
   echod "Done. please move $TARBALL_PATH/dslice-base.tar.gz to the offline server, and execute the base load command (e.g., dslice base load dslice-base.tar.gz)"
 }
@@ -68,6 +68,18 @@ load_base() {
   echod "Done. Registry container $DSLICE_CONTAINER_NAME is now running on port $DSLICE_PORT."
 }
 
+pull_base() {
+  for HOST_TAG in "$@"; do
+    REGISTRY_TAG=$DSLICE_URL/$(print_registry_tag $HOST_TAG)
+    echod "Pulling $HOST_TAG from the docker hub..."
+    docker pull $HOST_TAG
+    docker tag $HOST_TAG $REGISTRY_TAG
+    echod "Pushing $HOST_TAG to the registry..."
+    docker push $REGISTRY_TAG
+    docker rmi $REGISTRY_TAG
+  done
+  echod "Done."
+}
 ##################################################################################################################################################
 ##################################################################### Image ######################################################################
 ##################################################################################################################################################
@@ -260,6 +272,10 @@ case $1 in
       load)
         shift
         load_base "$@"
+        ;;
+      pull)
+        shift
+        pull_base "$@"
         ;;
       *)
         echo "Usage: $0 base {run|save|load}"

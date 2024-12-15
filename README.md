@@ -9,8 +9,9 @@ An efficient Docker image transfer system that extracts and merges necessary ima
     - run ([volume folder]): run dslice registry (online server)
     - save [base tarball path]: save dslice registry with base images as a tarball
     - load [base tarball] ([install directory]): load dslice registry from the tarball 
-- push [TAG1] [TAG2]... [TAGN]: push one or more images into the registry
-- pull [TAG1] [TAG2]... [TAGN]: pull one or more images from the registry
+    - pull [TAG1] [TAG2] ... [TAGN]: pull one or more images as base images
+- push [TAG1] [TAG2] ... [TAGN]: push one or more images into the registry
+- pull [TAG1] [TAG2] ... [TAGN]: pull one or more images from the registry
 - delete [TAG1]: delete the specified image from the registry
 - save [TAG]: 
     1. push the image into registry and exclude mounted blobs from target blobs

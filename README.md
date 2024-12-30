@@ -1,7 +1,7 @@
 # DockerSlice
 An efficient Docker image transfer system that extracts and merges necessary image layers. (designed for offline docker users)
 
-![Uploading image.png…]()
+<img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
 
 # Usage (will be updated)

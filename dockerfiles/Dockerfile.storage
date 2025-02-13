@@ -1,0 +1,5 @@
+ARG SOURCE=./dslice-base.tar
+
+FROM scratch
+ARG SOURCE
+COPY $SOURCE /

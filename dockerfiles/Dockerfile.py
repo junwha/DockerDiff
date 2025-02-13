@@ -1,5 +1,6 @@
 ARG PY_VERSION
-FROM junwha/dslice-base
+ARG BASE_TAG
+FROM junwha/dslice-base:${BASE_TAG}
 
 ARG PY_VERSION
 

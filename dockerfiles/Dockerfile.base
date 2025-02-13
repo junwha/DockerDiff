@@ -1,5 +1,5 @@
 ARG DOCKER_CUDA_VERSION 11.8.0
-FROM nvidia/cuda:${DOCKER_CUDA_VERSION}-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:${DOCKER_CUDA_VERSION}-cudnn-devel-ubuntu22.04
 
 ARG DOCKER_CUDA_VERSION
 

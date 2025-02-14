@@ -21,14 +21,6 @@ An efficient Docker image transfer system that extracts and merges necessary ima
 
 <img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
-# Docker base images
-For easier sharing of base images, DockerSlice provides several pre-configured base images:
-
-- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
-- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.
-- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.
-
-
 # Commands (will be updated)
 ./dslice {base|push|pull|delete|save|build|load}
 - base {save|load}
@@ -49,3 +41,10 @@ For easier sharing of base images, DockerSlice provides several pre-configured b
 - load [image tarball]: 
     1. extract the image to the registry (blobs, manifest)
     2. restart the container and pull the image the local
+
+# Docker base images
+For easier sharing of base images, DockerSlice provides several pre-configured base images:
+
+- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
+- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.
+- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.

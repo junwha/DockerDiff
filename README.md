@@ -1,4 +1,5 @@
-# DockerSlice
+# DockerSlice: Ship Only The Latest Layers You Update
+
 An efficient Docker image transfer system that extracts and merges necessary image layers. (designed for offline docker users)
 
 <img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />

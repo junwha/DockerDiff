@@ -4,9 +4,9 @@ An efficient Docker image transfer system that extracts and merges necessary ima
 
 # How to Use?
 
-Step 1: Clone and run the DockerSlice system (`dslice base run`) on both your online and offline servers. This will set up the DockerSlice registry.
+**Step 1:** Clone and run the DockerSlice system (`dslice base run`) on both your online and offline servers. This will set up the DockerSlice registry.
 
-Step 2: You can use DockerSlice in two ways:
+**Step 2**: You can use DockerSlice in two ways:
 
 1. **Share a Common Base Image:**
 

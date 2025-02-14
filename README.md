@@ -24,9 +24,9 @@ An efficient Docker image transfer system that extracts and merges necessary ima
 # Docker base images
 For easier sharing of base images, DockerSlice provides several pre-configured base images:
 
-- `dslice-base`: A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
-- `dslice-base-py`: A Conda-based image with a specific Python version, built on `dslice-base`.
-- `dslice-base-torch`: A PyTorch image with a specific Python version, built on `dslice-base-py`.
+- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
+- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.
+- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.
 
 
 # Commands (will be updated)

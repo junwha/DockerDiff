@@ -2,11 +2,20 @@
 
 An efficient Docker image transfer system that extracts and merges necessary image layers. (designed for offline docker users)
 
+## Usage
+
 <img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
+## Docker base images
+For easier sharing of base images, DockerSlice provides several pre-configured base images:
 
-# Usage (will be updated)
-./dslice {bsae|push|pull|delete|save|build|load}
+- `dslice-base`: A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
+- `dslice-base-py`: A Conda-based image with a specific Python version, built on `dslice-base`.
+- `dslice-base-torch`: A PyTorch image with a specific Python version, built on `dslice-base-py`.
+
+
+## Usage (will be updated)
+./dslice {base|push|pull|delete|save|build|load}
 - base {save|load}
     - run ([volume folder]): run dslice registry (online server)
     - save [base tarball path]: save dslice registry with base images as a tarball

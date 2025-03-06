@@ -12,7 +12,9 @@ An efficient Docker image transfer system that extracts and merges necessary ima
 
 - Push the [base images](#docker-base-images) to both servers.
 - Build custom images on top of the shared base images.
+- Save the above layers as a tar.gz file (dslice save <image tag> => <image tag>.tar.gz will be created) 
 - Transfer only the new layers above the base, minimizing data transfer.
+- Load the tar.gz file at the offline server (dslice load <image.tag>.tar.gz)
 
 2. **Partial Updates:**
 

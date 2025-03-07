@@ -1,6 +1,7 @@
 # DockerSlice: Ship Only The Latest Layers You Update
 
 An efficient Docker image transfer system that extracts and merges necessary image layers. (designed for offline docker users)
+<img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
 # How to Use?
 
@@ -33,8 +34,6 @@ B. **Partial Updates:**
 
 - When a Docker image on the offline server needs an update, make an update on the image online (e.g., install a package).
 - Then, move only the updated layers to the offline server.
-
-<img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
 # Commands (will be updated)
 ./dslice {base|push|pull|delete|save|build|load}

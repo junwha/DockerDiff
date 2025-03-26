@@ -1,0 +1,5 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DDIFF_PY=$SCRIPT_DIR/ddiff.py
+
+python3 $DDIFF_PY $@

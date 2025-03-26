@@ -1,64 +1,81 @@
-# DockerSlice: Ship Only The Latest Layers You Update
+# DockerDiff: Diff Only The Latest Layers You Update
 
-An efficient Docker image transfer system that extracts and merges necessary image layers. (designed for offline docker users)
+An efficient Docker image transfer system that extracts the diff of two images and loads only the diff into the server. (designed for offline docker users)
+
+
 <img width="688" alt="image" src="https://github.com/user-attachments/assets/6f367d37-709b-4f7b-8109-6cba191a3e42" />
 
-# How to Use?
 
-**Step 1:** Clone and run the DockerSlice system (`dslice base run`) on both your online and offline servers. This will set up the DockerSlice registry.
+# Getting Started
 
-**Step 2**: You can use DockerSlice in two ways:
+### Install DockerDiff
+```
+git clone https://github.com/junwha/DockerDiff
+echo "export PATH=$(pwd)/DockerDiff:\$PATH" >> ~/.bashrc && source ~/.bashrc
+```
 
-A. **Share a Common Base Image:**
+### Basic Usage: Build on the base image, and load the diff
 
-1. Push the [base images](#docker-base-images) to both servers.
+1. Push the [base image](#docker-base-images) into the offline registry server
 
-    `dslice push junwha/dslice-base-torch:py3.10-torch2.4.1`
+    i. Run the registry server `ddiff server` (optional, you can use your own server by setting the env variable DDIFF_URL)
 
-3. Build custom images on top of the shared base images.
+    ii. `ddiff push <base tag>`
+
+2. Run the ddiff server, and build a new image on top of the base image.
+    
+   i. Write a Dockerfile with `FROM <base tag>`
+
+   ii. Run the registry server `ddiff server`. This will generate the diff file `<new>-<version>.tar.gz`
    
-    Start with `FROM junwha/dslice-base-torch:py3.10-torch2.4.1` at the top of the Dockerfile
-   
-    `docker build -t <TAG> ./`
-   
-4. Save the above layers as a tar.gz file
-   
-    `dslice save <TAG>` (`<TAG>.tar.gz` will be created)
+      `ddiff build -t <new tag>:<version> ./` 
 
-5. Transfer only the new layers (`<TAG>.tar.gz`) above the base, minimizing data transfer.
-6. Load the tar.gz file at the offline server
+3. Transfer only the diff file (`<new tag>-<version>.tar.gz`) to the offline server
 
-     `dslice load <TAG>.tar.gz`
+4. Load the diff file at the offline server
 
-B. **Partial Updates:**
+     `ddiff load <new tag>-<version>.tar.gz`
 
-- When a Docker image on the offline server needs an update, make an update on the image online (e.g., install a package).
-- Then, move only the updated layers to the offline server.
+### Diff the existing two images
 
-# Commands (will be updated)
-./dslice {base|push|pull|delete|save|build|load}
-- base {save|load}
-    - run ([volume folder]): run dslice registry (online server)
-    - save [base tarball path]: save dslice registry with base images as a tarball
-    - load [base tarball] ([install directory]): load dslice registry from the tarball 
-    - pull [TAG1] [TAG2] ... [TAGN]: pull one or more images as base images
-- push [TAG1] [TAG2] ... [TAGN]: push one or more images into the registry
-- pull [TAG1] [TAG2] ... [TAGN]: pull one or more images from the registry
-- delete [TAG1]: delete the specified image from the registry
-- save [TAG]: 
-    1. push the image into registry and exclude mounted blobs from target blobs
-    2. copy target blobs and image manifest
-    3. archive the partial image
-- build [docker build args]: 
-    1. build an image from Dockerfile (docker build)
-    2. save image as a tarball (save)
-- load [image tarball]: 
-    1. extract the image to the registry (blobs, manifest)
-    2. restart the container and pull the image the local
+1. Make a diff file (`<new tag>-<version>.tar.gz`) of the target image from the base image
+
+    `ddiff diff <base tag> <target tag>`
+
+2. Transfer the diff file and load at the offline server
+
+    `ddiff load <new tag>-<version>.tar.gz`
+
+### Patch the image in the offline
+
+1. Modify the existing Dockerfile or make a new Dockerfile on top of the image in the offline (FROM <offline tag>:<prev version>)
+
+2. Build the Dockerfile with ddiff
+
+     `ddiff build -t <offline tag>:<new version> ./` 
+
+3. Transfer the diff file and load at the offline server
+
+    `ddiff load  <offline tag>-<new version>.tar.gz`
+
+# Commands
+
+**Usage**: `ddiff <command> <args...>`
+
+**Commands**
+  - `server`                      - Run the registry server
+  - `push` `<tag 1> ... <tag n>`   - Push one or more images
+  - `pull` `<tag 1> ... <tag n>`    - Pull one or more images
+  - `diff` `<base> <target>`       - Diff the target image from the base image
+  - `load` `<tar file>`             - Load the target image from diff file
+  - `build` `<args>`                - Build the image and diff from base (FROM ...)
 
 # Docker base images
-For easier sharing of base images, DockerSlice provides several pre-configured base images:
+For easier sharing of base images, DockerDiff provides several pre-configured base images:
 
-- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
-- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.
-- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.
+- [ddiff-base](https://hub.docker.com/r/junwha/ddiff-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
+- [ddiff-base-py](https://hub.docker.com/r/junwha/ddiff-base-py): A Conda-based image with a specific Python version, built on `ddiff-base`.
+- [ddiff-base-torch](https://hub.docker.com/r/junwha/ddiff-base-torch): A PyTorch image with a specific Python version, built on `ddiff-base-py`.
+
+# Requirements
+- Python 3.X

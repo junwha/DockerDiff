@@ -137,7 +137,7 @@ def _upload_manifest(tag, manifest_path):
         print_error(f"Manifest upload failed: {e.code} {e.reason} ({url})")
 
 def run_registry():
-    volume_arg = "" if ddiff_register_volume is None else f"-v{ddiff_register_volume:/var/lib/registry}"
+    volume_arg = "" if ddiff_register_volume is None else f"-v{ddiff_register_volume}:/var/lib/registry"
 
     cmd = f"docker run -it -d -p{ddiff_port}:5000 --name {ddiff_container_name} registry:2.8.3"
     run_command(cmd)

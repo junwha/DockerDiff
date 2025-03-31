@@ -202,7 +202,7 @@ def diff_image(base_tag, target_tag):
         f.write("|".join(diff_blobs))
     
     print_debug("Archiving...")
-    archive_name = f"{target_tag.replace(":", "-")}.tar.gz"
+    archive_name = f"{target_tag.replace(':', '-')}.tar.gz"
     with tarfile.open(archive_name, "w:gz") as tar:
         tar.add(output_dir, arcname=".ddiff-image")
 

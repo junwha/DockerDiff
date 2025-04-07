@@ -73,9 +73,13 @@ echo "export PATH=$(pwd)/DockerDiff:\$PATH" >> ~/.bashrc && source ~/.bashrc
 # Docker base images
 For easier sharing of base images, DockerDiff provides several pre-configured base images:
 
-- [ddiff-base](https://hub.docker.com/r/junwha/ddiff-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).
-- [ddiff-base-py](https://hub.docker.com/r/junwha/ddiff-base-py): A Conda-based image with a specific Python version, built on `ddiff-base`.
-- [ddiff-base-torch](https://hub.docker.com/r/junwha/ddiff-base-torch): A PyTorch image with a specific Python version, built on `ddiff-base-py`.
+```
+docker pull junwha/ddiff-base:py3.10-torch2.4.1
+```
+
+~~- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).~~
+~~- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.~~
+~~- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.~~
 
 # Requirements
 - Python 3.X

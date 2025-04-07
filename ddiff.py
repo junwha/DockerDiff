@@ -163,11 +163,11 @@ def pull_images(tags):
     # print_debug("Done.")
 
 def diff_image(base_tag, target_tag):
+    push_images([base_tag, target_tag])
+
     base_tag = _prepare_tag(base_tag)
     target_tag = _prepare_tag(target_tag)
     target_repo = target_tag.split(":")[0]
-
-    push_images([base_tag, target_tag])
 
     user_dir = os.getcwd()
     output_dir = os.path.join(user_dir, ".ddiff-image")

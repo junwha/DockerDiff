@@ -163,11 +163,11 @@ def pull_images(tags):
     # print_debug("Done.")
 
 def diff_image(base_tag, target_tag):
+    push_images([base_tag, target_tag])
+
     base_tag = _prepare_tag(base_tag)
     target_tag = _prepare_tag(target_tag)
     target_repo = target_tag.split(":")[0]
-
-    push_images([base_tag, target_tag])
 
     user_dir = os.getcwd()
     output_dir = os.path.join(user_dir, ".ddiff-image")
@@ -208,6 +208,7 @@ def diff_image(base_tag, target_tag):
 
     shutil.rmtree(output_dir)
     print_debug(f"Done. Load the output image archive {archive_name} in the offline (ddiff load {archive_name})")
+    print_debug(f"{archive_name}")
 
 def load_image(image_tarball):
     input_dir = ".ddiff-image"
@@ -268,8 +269,23 @@ def build_image(build_args):
     print_debug(f"Diff image blobs of {target_tag} from {base_tag}")
     diff_image(base_tag, target_tag)
 
+def list_blobs(tag):
+    push_images([tag])
+    
+    tag = _prepare_tag(tag)
+    
+    # Download manifest
+    manifest = _request_manifest(tag)
+    
+    
+    # Check blobs
+    blobs = _parse_blob_list(manifest)
+    print("=== blobs ===")
+    for blob in blobs:
+        print(blob.replace("sha256:", ""))
+
 if __name__ == '__main__':
-    if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build"]:
+    if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list"]:
         print("Usage: ddiff [command] [args...]")
         print("Commands:")
         print("  server                      - Run the registry server")
@@ -278,6 +294,7 @@ if __name__ == '__main__':
         print("  diff <base> <target>        - Diff the target image from the base image")
         print("  load <tar file>             - Load the target image from diff file")
         print("  build <args>                - Build the image and diff from base (FROM ...)")
+        print("  list <tag>                  - List up blobs of the given image")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -313,5 +330,9 @@ if __name__ == '__main__':
             print("Usage: python3 ddiff.py build <docker build args>")
             sys.exit(1)
         build_image(args)
-
+    elif command == "list":
+        if len(args) != 1:
+            print("Usage: python3 ddiff.py list <tag>")
+            sys.exit(1)
+        list_blobs(args[0])
 

@@ -213,7 +213,7 @@ def diff_image(base_tag, target_tag):
 def load_image(image_tarball):
     input_dir = ".ddiff-image"
     shutil.rmtree(input_dir, ignore_errors=True)
-    with tarfile.open(image_tarball, "r:gz") as tar:
+    with tarfile.open(image_tarball) as tar:
         tar.extractall()
 
     with open(os.path.join(input_dir, "BASE")) as f:

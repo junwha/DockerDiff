@@ -210,15 +210,18 @@ def diff_image(base_tag, target_tag):
     print_debug(f"Done. Load the output image archive {archive_name} in the offline (ddiff load {archive_name})")
     print_debug(f"{archive_name}")
 
-def load_image(image_tarball):
+def load_image(base_tag, image_tarball):
     input_dir = ".ddiff-image"
     shutil.rmtree(input_dir, ignore_errors=True)
     with tarfile.open(image_tarball) as tar:
         tar.extractall()
 
-    with open(os.path.join(input_dir, "BASE")) as f:
-        base_tag = f.read().strip()
-        base_repo = base_tag.split(":")[0]
+    # Parse base tag from the manifest onlyif not given
+    if base_tag is None
+        with open(os.path.join(input_dir, "BASE")) as f:
+            base_tag = f.read().strip()
+    base_repo = base_tag.split(":")[0]
+    
     with open(os.path.join(input_dir, "TARGET")) as f:
         target_tag = f.read().strip()
         target_repo = target_tag.split(":")[0]
@@ -321,10 +324,13 @@ if __name__ == '__main__':
             sys.exit(1)
         diff_image(args[0], args[1])
     elif command == "load":
-        if len(args) != 1:
-            print("Usage: python3 ddiff.py load <tar_file>")
+        if len(args) > 2:
+            print("Usage: python3 ddiff.py load <base tag> <tar_file> or python3 ddiff.py load <tar_file>")
             sys.exit(1)
-        load_image(args[0])
+        elif len(args) == 2:
+            load_image(args[0], args[1])
+        elif len(args) == 1:
+            load_image(None, args[0])
     elif command == "build":
         if len(args) < 1:
             print("Usage: python3 ddiff.py build <docker build args>")

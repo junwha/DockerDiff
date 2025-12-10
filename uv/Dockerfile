@@ -69,9 +69,12 @@ BASE_DIR=/ddiff-base/py\${PY_VERSION}-torch\${TORCH_VER}
 mkdir -p "\$BASE_DIR" && cd "\$BASE_DIR"
 uv venv --python "\${PY_VERSION}" --system-site-packages
 uv pip install --no-cache torch=="\${TORCH_VER}" torchvision=="\${VISION_VER}" torchaudio=="\${TORCH_VER}" --index-url "https://download.pytorch.org/whl/\${CUDA_VER}"
-echo "alias uv_init_torch\${TORCH_VER}='ln -sfn \${BASE_DIR}/.venv ./.venv && echo Created uv virtual environment with torch==\${TORCH_VER}'" >> ~/.bashrc
+echo "ln -sfn \${BASE_DIR}/.venv ./.venv && echo Created uv virtual environment with torch==\${TORCH_VER}" > /usr/local/bin/uv_init_torch\${TORCH_VER}
+chmod +x /usr/local/bin/uv_init_torch\${TORCH_VER}
 EOF
 RUN chmod +x /usr/local/bin/install_torch_env
+
+ENV UV_NO_CACHE=1
 
 # pytorch 2.4.1 (251209 Update)
 RUN install_torch_env 2.4.1 0.19.1 cu124

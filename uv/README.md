@@ -16,17 +16,17 @@ We provide a monolithic base image with various PyTorch versions and essential l
 ### 1. Docker file example
 
 ```dockerfile
-FROM junwha/ddiff-base:cu12.4.1-py3.10-torch-251205
+FROM junwha/ddiff-base:cu12.4.1-py3.10-torch-251210
 
 WORKDIR /<your workspace>
 
 # 1. Initialize venv linked to a specific Torch version
 # (Note: This creates a symlink to the base image's venv, thus only one project per torch version is recommended)
-RUN uv_init_torch2.5.1
+RUN bash -c uv_init_torch2.5.1
 
 # 2. Install additional packages (without torch)
 COPY pyproject.yaml /<your workspace>
-RUN uv pip install . --no-cache --no-install torch --no-install torchvision --no-install torchaudio
+RUN uv pip install --no-install torch --no-install torchvision --no-install torchaudio . 
 
 ```
 
@@ -48,7 +48,7 @@ you can use standard uv commands. The environment is automatically detected via 
     * **Build Tools:** gcc-12 g++-12 ninja-build cmake build-essential 
     * **Profiler:** Nsight System 2024
 ## Releases
-**Image Tag:** `junwha/ddiff-base:cu12.4.1-py3.10-torch-251205`
+**Image Tag:** `junwha/ddiff-base:cu12.4.1-py3.10-torch-251210`
   * **Python:** 3.10
   * **Pre-installed PyTorch Versions:** 2.4.1, 2.5.1, 2.6.0, 2.7.1, 2.9.0
   * **Compute Capabilities**: 7.0 7.5 8.0 8.6 8.9 9.0+PTX

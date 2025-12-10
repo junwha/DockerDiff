@@ -16,6 +16,7 @@ ddiff_url = f"http://localhost:{ddiff_port}" if ddiff_url is None else ddiff_url
 ddiff_url_base = ddiff_url.replace("https://", "").replace("http://", "").replace("//", "/")
 ddiff_container_name = os.getenv("DDIFF_CONTAINER_NAME", "ddiff-registry")
 ddiff_register_volume = os.getenv("DDIFF_REGISTRY_VOLUME")
+ddiff_disable_repository = os.getenv("DDIFF_DISABLE_RESPOSITORY", False)
 
 def print_debug(*args):
     print("[ddiff]", *args)
@@ -37,7 +38,8 @@ def run_command(cmd, capture_output=False):
 #     return ddiff_registry_home, ddiff_registry_data_location, docker_registry_data_location
 
 def _prepare_tag(tag):
-    tag = tag.replace("/", "-")
+    if ddiff_disable_repository:
+        tag = tag.replace("/", "-")
     if ":" not in tag:
         tag += ":latest"
     return tag
@@ -202,7 +204,7 @@ def diff_image(base_tag, target_tag):
         f.write("|".join(diff_blobs))
     
     print_debug("Archiving...")
-    archive_name = f"{target_tag.replace(':', '-')}.tar.gz"
+    archive_name = f"{target_tag.replace('/', '--').replace(':', '-')}.tar.gz"
     with tarfile.open(archive_name, "w:gz") as tar:
         tar.add(output_dir, arcname=".ddiff-image")
 
@@ -217,7 +219,7 @@ def load_image(base_tag, image_tarball):
         tar.extractall()
 
     # Parse base tag from the manifest onlyif not given
-    if base_tag is None
+    if base_tag is None:
         with open(os.path.join(input_dir, "BASE")) as f:
             base_tag = f.read().strip()
     base_repo = base_tag.split(":")[0]
@@ -291,7 +293,7 @@ if __name__ == '__main__':
     if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list"]:
         print("Usage: ddiff [command] [args...]")
         print("Commands:")
-        print("  server                      - Run the registry server")
+        print("  server                      - Run the registry server (set DDIFF_REGISTRY_VOLUME)")
         print("  push <tag 1> ... <tag n>    - Push one or more images")
         print("  pull <tag 1> ... <tag n>    - Pull one or more images")
         print("  diff <base> <target>        - Diff the target image from the base image")
@@ -305,7 +307,7 @@ if __name__ == '__main__':
 
     if command == "server":
         if args:
-            print("Usage: python3 ddiff.py server")
+            print("Usage: DDIFF_REGISTRY_VOLUME=<path to volume> python3 ddiff.py server")
             sys.exit(1)
         run_registry()
     elif command == "push":

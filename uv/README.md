@@ -24,8 +24,10 @@ WORKDIR /<your workspace>
 # (Note: This creates a symlink to the base image's venv, thus only one project per torch version is recommended)
 RUN uv_init_torch2.5.1
 
-# 2. Install additional packages (e.g., diffusers)
-RUN uv pip install -r requirements.txt
+# 2. Install additional packages (without torch)
+COPY pyproject.yaml /<your workspace>
+RUN uv pip install . --no-cache --no-install torch --no-install torchvision --no-install torchaudio
+
 ```
 
 ### 2. Running Commands Inside the container

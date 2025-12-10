@@ -43,12 +43,14 @@ RUN apt-get install -y ffmpeg libsm6 libxext6 libgl1
 
 # Utils
 RUN apt-get install -y vim git bzip2 tmux wget tar htop curl
-RUN add-apt-repository ppa:deadsnakes/ppa && apt-get install -y python3.12 python3.12-dev python3.12-venv
 
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
-RUN update-alternatives --set python3 /usr/bin/python3.12
-RUN ln -sf /usr/bin/python3.12-config /usr/bin/python3-config 
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+RUN add-apt-repository ppa:deadsnakes/ppa && apt-get install -y python${PY_VERSION} python${PY_VERSION}-dev python${PY_VERSION}-venv
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PY_VERSION} 1
+RUN update-alternatives --set python3 /usr/bin/python${PY_VERSION}
+RUN ln -sf /usr/bin/python${PY_VERSION}-config /usr/bin/python3-config 
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PY_VERSION}
+
+RUN apt-get install -y python3-setuptools python3-dev libpython${PY_VERSION}-dev
 
 RUN curl -LsSf https://astral.sh/uv/0.8.14/install.sh | sh
 
@@ -67,9 +69,9 @@ VISION_VER=\$2
 CUDA_VER=\$3
 BASE_DIR=/ddiff-base/py\${PY_VERSION}-torch\${TORCH_VER}
 mkdir -p "\$BASE_DIR" && cd "\$BASE_DIR"
-uv venv --python "\${PY_VERSION}" --system-site-packages
+uv venv --python "\${PY_VERSION}" --system-site-packages --seed
 uv pip install --no-cache torch=="\${TORCH_VER}" torchvision=="\${VISION_VER}" torchaudio=="\${TORCH_VER}" --index-url "https://download.pytorch.org/whl/\${CUDA_VER}"
-echo "ln -sfn \${BASE_DIR}/.venv ./.venv && echo Created uv virtual environment with torch==\${TORCH_VER}" > /usr/local/bin/uv_init_torch\${TORCH_VER}
+echo "ln -sfn \${BASE_DIR}/.venv ./.venv && uv add torch==\${TORCH_VER} torchvision==\${VISION_VER} torchaudio==\${TORCH_VER} && echo Created uv virtual environment with torch==\${TORCH_VER}" > /usr/local/bin/uv_init_torch\${TORCH_VER}
 chmod +x /usr/local/bin/uv_init_torch\${TORCH_VER}
 EOF
 RUN chmod +x /usr/local/bin/install_torch_env

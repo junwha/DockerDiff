@@ -38,6 +38,7 @@ you can use standard uv commands. The environment is automatically detected via 
 # Base Images
 ### Common Packages
 * **Python Libraries**
+    * **Kernel:** triton
     * **Data & Science:** numpy pandas scipy scikit-learn matplotlib seaborn
     * **Tools:** jupyterlab ipykernel tqdm rich
     * **CV & Utils:** opencv-python-headless pillow einops safetensors
@@ -51,5 +52,6 @@ you can use standard uv commands. The environment is automatically detected via 
 **Image Tag:** `junwha/ddiff-base:cu12.4.1-py3.10-torch-251210`
   * **Python:** 3.10
   * **Pre-installed PyTorch Versions:** 2.4.1, 2.5.1, 2.6.0, 2.7.1, 2.9.0
+  * **Pre-installed Flash-attention Version:** 2.8.3
   * **Compute Capabilities**: 7.0 7.5 8.0 8.6 8.9 9.0+PTX
 

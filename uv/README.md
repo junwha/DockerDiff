@@ -16,7 +16,7 @@ We provide a monolithic base image with various PyTorch versions and essential l
 ### 1. Docker file example
 
 ```dockerfile
-FROM junwha/ddiff-base:cu12.4.1-py3.10-torch-251210
+FROM junwha/ddiff-base:cu12.4.1-py3.10-torch-251214
 
 WORKDIR /<your workspace>
 
@@ -49,7 +49,7 @@ you can use standard uv commands. The environment is automatically detected via 
     * **Build Tools:** gcc-12 g++-12 ninja-build cmake build-essential 
     * **Profiler:** Nsight System 2024
 ## Releases
-**Image Tag:** `junwha/ddiff-base:cu12.4.1-py3.10-torch-251210`
+**Image Tag:** `junwha/ddiff-base:cu12.4.1-py3.10-torch-251214`
   * **Python:** 3.10
   * **Pre-installed PyTorch Versions:** 2.4.1, 2.5.1, 2.6.0, 2.7.1, 2.9.0
   * **Pre-installed Flash-attention Version:** 2.8.3

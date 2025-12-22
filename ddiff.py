@@ -223,6 +223,8 @@ def load_image(base_tag, image_tarball):
         with open(os.path.join(input_dir, "BASE")) as f:
             base_tag = f.read().strip()
     base_repo = base_tag.split(":")[0]
+
+    push_images([base_tag])
     
     with open(os.path.join(input_dir, "TARGET")) as f:
         target_tag = f.read().strip()

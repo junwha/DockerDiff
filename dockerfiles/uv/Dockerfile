@@ -26,7 +26,7 @@ uv venv --python "\${PY_VERSION}" --system-site-packages --seed
 uv pip install --no-cache torch=="\${TORCH_VER}" torchvision=="\${VISION_VER}" torchaudio=="\${TORCH_VER}" --index-url "https://download.pytorch.org/whl/\${CUDA_VER}"
 uv pip install --no-cache \$FLASH_ATTN_LINK
 echo "ln -sfn \${BASE_DIR}/.venv ./.venv && [ -f pyproject.toml ] && uv add torch==\${TORCH_VER} torchvision==\${VISION_VER} torchaudio==\${TORCH_VER}; echo Created uv virtual environment with torch==\${TORCH_VER}" > /usr/local/bin/uv_init_torch\${TORCH_VER}
-chmod +x /usr/local/bin/uv_init_torch\${TORCH_VER}
+chmod +x /usr/local/bin/init_torch\${TORCH_VER}
 EOF
 RUN chmod +x /usr/local/bin/install_torch_env
 

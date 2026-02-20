@@ -7,7 +7,25 @@ import time
 from pathlib import Path
 import urllib
 import urllib.request
+import urllib.parse
 import json
+import re
+
+DOCKER_MANIFEST_V2 = "application/vnd.docker.distribution.manifest.v2+json"
+DOCKER_MANIFEST_LIST_V2 = "application/vnd.docker.distribution.manifest.list.v2+json"
+OCI_MANIFEST_V1 = "application/vnd.oci.image.manifest.v1+json"
+OCI_INDEX_V1 = "application/vnd.oci.image.index.v1+json"
+
+SUPPORTED_MANIFEST_TYPES = [
+    DOCKER_MANIFEST_V2,
+    OCI_MANIFEST_V1,
+]
+
+ACCEPT_MANIFEST_TYPES = ", ".join([
+    *SUPPORTED_MANIFEST_TYPES,
+    DOCKER_MANIFEST_LIST_V2,
+    OCI_INDEX_V1,
+])
 
 # Default values
 ddiff_port = os.getenv("DDIFF_PORT", "5000")
@@ -49,18 +67,29 @@ def _request_manifest(tag):
     manifest_url = f"{ddiff_url}/v2/{repo}/manifests/{version_tag}"
 
     req = urllib.request.Request(manifest_url)
-    req.add_header("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+    req.add_header("Accept", ACCEPT_MANIFEST_TYPES)
     try:
         with urllib.request.urlopen(req) as response:
             manifest = response.read().decode()
-            return manifest
+            content_type = (response.getheader("Content-Type") or "").split(";")[0]
+            return manifest, content_type
     except urllib.error.HTTPError as e:
         print_error(f"HTTP error: {e.code} - {e.reason} ({manifest_url})")
     except Exception as e:
         print_error(f"Error: {e} ({manifest_url})")
     
+def _validate_manifest_media_type(manifest):
+    media_type = manifest.get("mediaType", "")
+    if media_type in [DOCKER_MANIFEST_LIST_V2, OCI_INDEX_V1]:
+        print_error("Manifest list/index is not supported yet. Please provide a single image manifest tag.")
+    if media_type and media_type not in SUPPORTED_MANIFEST_TYPES:
+        print_error(f"Unsupported manifest mediaType: {media_type}")
+    return media_type
+
+
 def _parse_blob_list(manifest_str):
     manifest = json.loads(manifest_str)
+    _validate_manifest_media_type(manifest)
     digests = []
 
     # Config blob
@@ -75,7 +104,8 @@ def _parse_blob_list(manifest_str):
     return digests
 
 def _download_blob(repo, digest, output_path):
-    assert digest.startswith("sha256:") # Digest must start with 'sha256:'
+    if not re.match(r"^[a-z0-9_+.-]+:[a-fA-F0-9]+$", digest):
+        print_error(f"Invalid digest format: {digest}")
 
     blob_url = f"{ddiff_url}/v2/{repo}/blobs/{digest}"
 
@@ -105,7 +135,8 @@ def _upload_blob(repo, digest, blob_dir):
         # Load tar file of the layer
         with open(f"{blob_dir}/{digest}.tar", 'rb') as f:
             data = f.read()
-        full_url = f"{session_url}&digest={digest}"
+        delimiter = "&" if "?" in session_url else "?"
+        full_url = f"{session_url}{delimiter}digest={urllib.parse.quote(digest)}"
         req = urllib.request.Request(full_url, data=data, method="PUT")
         req.add_header("Content-Type", "application/octet-stream")
         with urllib.request.urlopen(req) as res:
@@ -125,14 +156,14 @@ def _cross_mount(target_repo, base_repo, digest):
     except urllib.error.HTTPError as e:
         print_error(f"Mount failed: {e.code} {e.reason} ({url})")
 
-def _upload_manifest(tag, manifest_path):
+def _upload_manifest(tag, manifest_path, manifest_media_type=DOCKER_MANIFEST_V2):
     repo, version_tag = tag.split(":")
     url = f"{ddiff_url}/v2/{repo}/manifests/{version_tag}"
     try:
         with open(manifest_path, 'rb') as f:
             data = f.read()
         req = urllib.request.Request(url, data=data, method="PUT")
-        req.add_header("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+        req.add_header("Content-Type", manifest_media_type)
         with urllib.request.urlopen(req) as res:
             print_debug(f"Manifest uploaded to {repo} (status {res.status})")
     except urllib.error.HTTPError as e:
@@ -179,8 +210,8 @@ def diff_image(base_tag, target_tag):
     os.makedirs(blob_dir)
 
     # Download manifest
-    base_manifest = _request_manifest(base_tag)
-    target_manifest = _request_manifest(target_tag)
+    base_manifest, _ = _request_manifest(base_tag)
+    target_manifest, target_manifest_media_type = _request_manifest(target_tag)
     
     # Download different blobs
     base_blobs = _parse_blob_list(base_manifest)
@@ -194,6 +225,8 @@ def diff_image(base_tag, target_tag):
     # Write back metadata
     with open(output_dir + "/manifest.json", "w") as f:
         f.write(target_manifest)
+    with open(os.path.join(output_dir, "MANIFEST_MEDIA_TYPE"), "w") as f:
+        f.write(target_manifest_media_type)
     with open(os.path.join(output_dir, "BASE"), "w") as f:
         f.write(base_tag)
     with open(os.path.join(output_dir, "TARGET"), "w") as f:
@@ -234,6 +267,12 @@ def load_image(base_tag, image_tarball):
     with open(os.path.join(input_dir, "UPLOAD_BLOBS")) as f:
         upload_blobs = f.read().strip().split("|")
 
+    manifest_media_type = DOCKER_MANIFEST_V2
+    manifest_media_type_path = os.path.join(input_dir, "MANIFEST_MEDIA_TYPE")
+    if os.path.exists(manifest_media_type_path):
+        with open(manifest_media_type_path) as f:
+            manifest_media_type = f.read().strip() or DOCKER_MANIFEST_V2
+
     # Mount
     for blob in mount_blobs:
         _cross_mount(target_repo, base_repo, blob)
@@ -242,7 +281,7 @@ def load_image(base_tag, image_tarball):
     for blob in upload_blobs:
         _upload_blob(target_repo, blob, blob_dir)
 
-    _upload_manifest(target_tag, f"{input_dir}/manifest.json")
+    _upload_manifest(target_tag, f"{input_dir}/manifest.json", manifest_media_type)
 
     shutil.rmtree(input_dir)
 
@@ -282,7 +321,7 @@ def list_blobs(tag):
     tag = _prepare_tag(tag)
     
     # Download manifest
-    manifest = _request_manifest(tag)
+    manifest, _ = _request_manifest(tag)
     
     
     # Check blobs
@@ -345,4 +384,3 @@ if __name__ == '__main__':
             print("Usage: python3 ddiff.py list <tag>")
             sys.exit(1)
         list_blobs(args[0])
-

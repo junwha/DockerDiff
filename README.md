@@ -83,3 +83,8 @@ docker pull junwha/ddiff-base:py3.10-torch2.4.1
 
 # Requirements
 - Python 3.X
+
+# Registry/API compatibility
+- Docker Registry HTTP API V2 endpoints are used (`/v2/<name>/manifests/<reference>`, `/v2/<name>/blobs/<digest>`).
+- Both Docker image manifest V2 and OCI image manifest V1 media types are supported.
+- OCI index / Docker manifest list (multi-arch index) is currently not supported yet.

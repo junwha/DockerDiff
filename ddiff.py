@@ -35,11 +35,9 @@ ddiff_url_base = ddiff_url.replace("https://", "").replace("http://", "").replac
 ddiff_container_name = os.getenv("DDIFF_CONTAINER_NAME", "ddiff-registry")
 ddiff_register_volume = os.getenv("DDIFF_REGISTRY_VOLUME")
 ddiff_disable_repository = os.getenv("DDIFF_DISABLE_RESPOSITORY", False)
-ddiff_force_skopeo = os.getenv("DDIFF_FORCE_SKOPEO", "").lower() in ["1", "true", "yes", "on"]
 ddiff_force_podman = os.getenv("DDIFF_FORCE_PODMAN", "").lower() in ["1", "true", "yes", "on"]
 
 container_runtime = "docker"
-container_transport = "docker-daemon"
 push_pull_with_skopeo = False
 
 def print_debug(*args):
@@ -50,8 +48,11 @@ def print_error(*args):
     raise RuntimeError
 
 def run_command(cmd, capture_output=False):
-    result = subprocess.run(cmd, shell=True, text=True, capture_output=capture_output)
-    return result.stdout.strip() if capture_output else None
+    try:
+        result = subprocess.run(cmd, shell=True, text=True, capture_output=capture_output, check=True)
+        return result.stdout.strip() if capture_output else None
+    except subprocess.CalledProcessError as e:
+        print_error(f"Command failed: {cmd}\nExit code: {e.returncode}")
 
 # def get_registry_info():
 #     cmd = f"docker inspect --format '{{{{range .Mounts}}}}{{{{if eq .Type \"bind\"}}}}{{{{println .Source}}}}{{{{end}}}}{{{{end}}}}' {ddiff_container_name}"
@@ -69,8 +70,11 @@ def _prepare_tag(tag):
     return tag
 
 def _request_manifest(tag):
-    repo, version_tag = tag.split(":")
-    manifest_url = f"{ddiff_url}/v2/{repo}/manifests/{version_tag}"
+    if "@" in tag: # For OCI images
+        repo, reference = tag.split("@", 1)
+    else: # For docker v2 images
+        repo, reference = tag.split(":", 1)
+    manifest_url = f"{ddiff_url}/v2/{repo}/manifests/{reference}"
 
     req = urllib.request.Request(manifest_url)
     req.add_header("Accept", ACCEPT_MANIFEST_TYPES)
@@ -203,6 +207,13 @@ def run_registry():
     cmd = f"{container_runtime} run -it -d -p{ddiff_port}:5000 {volume_arg} --name {ddiff_container_name}{tls_verify_flag} registry:2.8.3"
     run_command(cmd)
 
+def _skopeo_source_ref(host_tag):
+    """Return the correct skopeo source transport:reference for Podman."""
+    # Podman stores short names under the localhost/ prefix in containers-storage
+    if not host_tag.startswith("localhost/"):
+        host_tag = f"localhost/{host_tag}"
+    return f"containers-storage:{host_tag}"
+
 def push_images(tags):
     print_debug("Pushing to the registry...")
     for host_tag in tags:
@@ -210,9 +221,10 @@ def push_images(tags):
         if push_pull_with_skopeo:
             run_command(
                 f"skopeo copy --dest-tls-verify=false --format=v2s2 "
-                f"{container_transport}:{host_tag} docker://{registry_tag}"
+                f"{_skopeo_source_ref(host_tag)} docker://{registry_tag}"
             )
         else:
+            assert container_runtime == "docker", "Only docker is supported without skopeo"
             run_command(f"docker tag {host_tag} {registry_tag}")
             run_command(f"docker push {registry_tag}")
             run_command(f"docker rmi {registry_tag}")
@@ -225,9 +237,10 @@ def pull_images(tags):
         if push_pull_with_skopeo:
             run_command(
                 f"skopeo copy --src-tls-verify=false "
-                f"docker://{registry_tag} {container_transport}:{host_tag}"
+                f"docker://{registry_tag} {_skopeo_source_ref(host_tag)}"
             )
         else:
+            assert container_runtime == "docker", "Only docker is supported without skopeo"
             run_command(f"docker pull {registry_tag}")
             run_command(f"docker tag {registry_tag} {host_tag}")
             run_command(f"docker rmi {registry_tag}")
@@ -323,12 +336,19 @@ def load_image(base_tag, image_tarball):
 
     shutil.rmtree(input_dir)
 
-    if "localhost" in ddiff_url: 
+    if "localhost" in ddiff_url:
         print_debug("Pulling image from the registry...")
         registry_tag = f"{ddiff_url_base}/{target_tag}"
-        run_command(f"docker pull {registry_tag}")
-        run_command(f"docker tag {registry_tag} {target_tag}")
-        run_command(f"docker rmi {registry_tag}")
+        if push_pull_with_skopeo:
+            run_command(
+                f"skopeo copy --src-tls-verify=false "
+                f"docker://{registry_tag} {_skopeo_source_ref(target_tag)}"
+            )
+        else:
+            assert container_runtime == "docker", "Only docker is supported without skopeo"
+            run_command(f"docker pull {registry_tag}")
+            run_command(f"docker tag {registry_tag} {target_tag}")
+            run_command(f"docker rmi {registry_tag}")
         print_debug(f"The image {target_tag} is sucessfully pulled on the host.\nIf you will not inherit {target_tag} in future, you can delete the image.")
     else:
         print_debug(f"The image {target_tag} is sucessfully pulled on the host.")
@@ -345,8 +365,8 @@ def build_image(build_args):
         if arg == "--diff":
             do_diff = True
             build_args[i] = ""
-    if container_runtime == "docker":
-        build_args.append("--provenance=false")
+    # if container_runtime == "docker":
+    #     build_args.append("--provenance=false")
     assert not target_tag is None
 
     # Fall back to docker build
@@ -369,7 +389,6 @@ def list_blobs(tag):
     # Download manifest
     manifest, _ = _request_manifest(tag)
     
-    
     # Check blobs
     blobs = _parse_blob_list(manifest)
     print("=== blobs ===")
@@ -384,26 +403,22 @@ if __name__ == '__main__':
             sys.exit(0)
 
         container_runtime = "podman"
-        container_transport = "containers-storage"
         push_pull_with_skopeo = True
         if ddiff_force_podman:
             print_debug("DDIFF_FORCE_PODMAN is enabled. Switching to podman mode.")
         else:
             print_debug("Docker command not found. Switching to podman mode.")
-    elif ddiff_force_skopeo:
-        push_pull_with_skopeo = True
-        print_debug("DDIFF_FORCE_SKOPEO is enabled. Using skopeo for push/pull.")
 
     if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list"]:
         print("Usage: ddiff [command] [args...]")
         print("Commands:")
-        print("  server                      - Run the registry server (set DDIFF_REGISTRY_VOLUME)")
-        print("  push <tag 1> ... <tag n>    - Push one or more images")
-        print("  pull <tag 1> ... <tag n>    - Pull one or more images")
-        print("  diff <base> <target>        - Diff the target image from the base image")
-        print("  load <tar file>             - Load the target image from diff file")
-        print("  build <args>                - Build the image and diff from base (FROM ...)")
-        print("  list <tag>                  - List up blobs of the given image")
+        print("  server                       - Run the registry server (set DDIFF_REGISTRY_VOLUME)")
+        print("  push <tag 1> ... <tag n>     - Push one or more images")
+        print("  pull <tag 1> ... <tag n>     - Pull one or more images")
+        print("  diff <base> <target>         - Diff the target image from the base image")
+        print("  load (<base tag>) <tar file> - Load the target image from diff file")
+        print("  build <args>                 - Build the image and diff from base (FROM ...)")
+        print("  list <tag>                   - List up blobs of the given image")
         sys.exit(1)
 
     command = sys.argv[1]

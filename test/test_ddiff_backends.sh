@@ -213,17 +213,7 @@ run_docker_mode() {
     python3 curl docker
 }
 
-# Test 2: docker-skopeo mode
-# Inject: DDIFF_FORCE_SKOPEO=1
-# Expect: ddiff log contains "DDIFF_FORCE_SKOPEO is enabled"
-run_docker_skopeo_mode() {
-  run_case \
-    "docker-skopeo" \
-    "docker" \
-    "DDIFF_FORCE_SKOPEO" "1" "DDIFF_FORCE_SKOPEO is enabled" \
-    5611 5612 \
-    python3 curl docker skopeo
-}
+
 
 # Test 3: podman mode
 # Inject: DDIFF_FORCE_PODMAN=1
@@ -240,18 +230,15 @@ run_podman_mode() {
 run_selected_cases() {
   local target="$1"
   case "$target" in
-    all|docker|docker-skopeo|podman) ;;
+    all|docker|podman) ;;
     *)
-      echo "Usage: $0 [all|docker|docker-skopeo|podman]"
+      echo "Usage: $0 [all|docker|podman]"
       exit 2
       ;;
   esac
 
   if [[ "$target" == "all" || "$target" == "docker" ]]; then
     run_docker_mode
-  fi
-  if [[ "$target" == "all" || "$target" == "docker-skopeo" ]]; then
-    run_docker_skopeo_mode
   fi
   if [[ "$target" == "all" || "$target" == "podman" ]]; then
     run_podman_mode

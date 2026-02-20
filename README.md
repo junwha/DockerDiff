@@ -73,20 +73,18 @@ source ~/.bashrc
   - `build` `<args>`                - Build the image and diff from base (FROM ...)
 
 # Docker base images
-For easier sharing of base images, DockerDiff provides several pre-configured base images:
+For easier sharing of base images, DockerDiff provides several pre-configured base images. 
 
 ```
-docker pull junwha/ddiff-base:py3.10-torch2.4.1
+docker pull junwha/ddiff-base:cu12.4.1-py3.10-torch-251214
 ```
 
-~~- [dslice-base](https://hub.docker.com/r/junwha/dslice-base): A CUDA base image with essential tools (e.g., Git, Vim, OpenSSH).~~
-~~- [dslice-base-py](https://hub.docker.com/r/junwha/dslice-base-py): A Conda-based image with a specific Python version, built on `dslice-base`.~~
-~~- [dslice-base-torch](https://hub.docker.com/r/junwha/dslice-base-torch): A PyTorch image with a specific Python version, built on `dslice-base-py`.~~
+For more details, visit [dockerfiles](dockerfiles)
 
 # Requirements
 - Python 3.X
+- (optional, if you use podman) skopeo
 
 # Registry/API compatibility
 - Docker Registry HTTP API V2 endpoints are used (`/v2/<name>/manifests/<reference>`, `/v2/<name>/blobs/<digest>`).
-- Both Docker image manifest V2 and OCI image manifest V1 media types are supported.
-- OCI index / Docker manifest list (multi-arch index) is currently not supported yet.
+- Both Docker image manifest V2 and OCI image types are supported.

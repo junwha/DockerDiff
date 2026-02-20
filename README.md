@@ -11,7 +11,9 @@ An efficient Docker image transfer system that extracts the diff of two images a
 ### Install DockerDiff
 ```
 git clone https://github.com/junwha/DockerDiff
-echo "export PATH=$(pwd)/DockerDiff:\$PATH" >> ~/.bashrc && source ~/.bashrc
+cd DockerDiff
+./install.sh
+source ~/.bashrc
 ```
 
 ### Basic Usage: Build on the base image, and load the diff

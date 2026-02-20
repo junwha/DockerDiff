@@ -35,6 +35,12 @@ ddiff_url_base = ddiff_url.replace("https://", "").replace("http://", "").replac
 ddiff_container_name = os.getenv("DDIFF_CONTAINER_NAME", "ddiff-registry")
 ddiff_register_volume = os.getenv("DDIFF_REGISTRY_VOLUME")
 ddiff_disable_repository = os.getenv("DDIFF_DISABLE_RESPOSITORY", False)
+ddiff_force_skopeo = os.getenv("DDIFF_FORCE_SKOPEO", "").lower() in ["1", "true", "yes", "on"]
+ddiff_force_podman = os.getenv("DDIFF_FORCE_PODMAN", "").lower() in ["1", "true", "yes", "on"]
+
+container_runtime = "docker"
+container_transport = "docker-daemon"
+push_pull_with_skopeo = False
 
 def print_debug(*args):
     print("[ddiff]", *args)
@@ -172,27 +178,38 @@ def _upload_manifest(tag, manifest_path, manifest_media_type=DOCKER_MANIFEST_V2)
 def run_registry():
     volume_arg = "" if ddiff_register_volume is None else f"-v{ddiff_register_volume}:/var/lib/registry"
 
-    cmd = f"docker run -it -d -p{ddiff_port}:5000 --name {ddiff_container_name} registry:2.8.3"
+    tls_verify_flag = " --tls-verify=false" if container_runtime == "podman" else ""
+    cmd = f"{container_runtime} run -it -d -p{ddiff_port}:5000 {volume_arg} --name {ddiff_container_name}{tls_verify_flag} registry:2.8.3"
     run_command(cmd)
 
 def push_images(tags):
     print_debug("Pushing to the registry...")
     for host_tag in tags:
         registry_tag = f"{ddiff_url_base}/{_prepare_tag(host_tag)}"
-        run_command(f"docker tag {host_tag} {registry_tag}")
-        print("a", f"docker tag {host_tag} {registry_tag}")
-        run_command(f"docker push {registry_tag}")
-        print("b")
-        run_command(f"docker rmi {registry_tag}")
+        if push_pull_with_skopeo:
+            run_command(
+                f"skopeo copy --dest-tls-verify=false --format=v2s2 "
+                f"{container_transport}:{host_tag} docker://{registry_tag}"
+            )
+        else:
+            run_command(f"docker tag {host_tag} {registry_tag}")
+            run_command(f"docker push {registry_tag}")
+            run_command(f"docker rmi {registry_tag}")
     # print_debug("Done.")
 
 def pull_images(tags):
     print_debug("Pulling from the registry...")
     for host_tag in tags:
         registry_tag = f"{ddiff_url_base}/{_prepare_tag(host_tag)}"
-        run_command(f"docker pull {registry_tag}")
-        run_command(f"docker tag {registry_tag} {host_tag}")
-        run_command(f"docker rmi {registry_tag}")
+        if push_pull_with_skopeo:
+            run_command(
+                f"skopeo copy --src-tls-verify=false "
+                f"docker://{registry_tag} {container_transport}:{host_tag}"
+            )
+        else:
+            run_command(f"docker pull {registry_tag}")
+            run_command(f"docker tag {registry_tag} {host_tag}")
+            run_command(f"docker rmi {registry_tag}")
     # print_debug("Done.")
 
 def diff_image(base_tag, target_tag):
@@ -311,7 +328,7 @@ def build_image(build_args):
     assert not target_tag is None
 
     print_debug(f"Building image with tag: {target_tag}\nwe will diff image blobs of {target_tag} from {base_tag}")
-    run_command("docker build " + " ".join(build_args))
+    run_command(f"{container_runtime} build " + " ".join(build_args))
     print_debug(f"Diff image blobs of {target_tag} from {base_tag}")
     diff_image(base_tag, target_tag)
 
@@ -331,6 +348,23 @@ def list_blobs(tag):
         print(blob.replace("sha256:", ""))
 
 if __name__ == '__main__':
+    if ddiff_force_podman or shutil.which("docker") is None:
+        if shutil.which("podman") is None:
+            print_debug("Docker and podman commands are not available.")
+            print("Please install podman first (e.g. https://podman.io/docs/installation) and run again.")
+            sys.exit(0)
+
+        container_runtime = "podman"
+        container_transport = "containers-storage"
+        push_pull_with_skopeo = True
+        if ddiff_force_podman:
+            print_debug("DDIFF_FORCE_PODMAN is enabled. Switching to podman mode.")
+        else:
+            print_debug("Docker command not found. Switching to podman mode.")
+    elif ddiff_force_skopeo:
+        push_pull_with_skopeo = True
+        print_debug("DDIFF_FORCE_SKOPEO is enabled. Using skopeo for push/pull.")
+
     if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list"]:
         print("Usage: ddiff [command] [args...]")
         print("Commands:")

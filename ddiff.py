@@ -78,6 +78,29 @@ def _request_manifest(tag):
         with urllib.request.urlopen(req) as response:
             manifest = response.read().decode()
             content_type = (response.getheader("Content-Type") or "").split(";")[0]
+
+            if content_type in [DOCKER_MANIFEST_LIST_V2, OCI_INDEX_V1]:
+                data = json.loads(manifest)
+                manifests = data.get("manifests", [])
+                target_digest = None
+                
+                # Try to find amd64/linux architecture
+                for m in manifests:
+                    plat = m.get("platform", {})
+                    if plat.get("architecture") == "amd64" and plat.get("os") == "linux":
+                        target_digest = m.get("digest")
+                        break
+                        
+                # Fallback to first available manifest if amd64/linux is missing
+                if not target_digest and manifests:
+                    target_digest = manifests[0].get("digest")
+                    
+                if target_digest:
+                    print_debug(f"Resolved manifest list to digest: {target_digest}")
+                    return _request_manifest(f"{repo}@{target_digest}")
+                else:
+                    print_error("Failed to find valid manifest in the manifest list/index.")
+
             return manifest, content_type
     except urllib.error.HTTPError as e:
         print_error(f"HTTP error: {e.code} - {e.reason} ({manifest_url})")
@@ -86,8 +109,6 @@ def _request_manifest(tag):
     
 def _validate_manifest_media_type(manifest):
     media_type = manifest.get("mediaType", "")
-    if media_type in [DOCKER_MANIFEST_LIST_V2, OCI_INDEX_V1]:
-        print_error("Manifest list/index is not supported yet. Please provide a single image manifest tag.")
     if media_type and media_type not in SUPPORTED_MANIFEST_TYPES:
         print_error(f"Unsupported manifest mediaType: {media_type}")
     return media_type
@@ -315,22 +336,30 @@ def load_image(base_tag, image_tarball):
 def build_image(build_args):
     target_tag = None
     dockerfile_str = "Dockerfile"
+    do_diff = False
     for i, arg in enumerate(build_args):
         if arg == "-t" and i + 1 < len(build_args):
             target_tag = build_args[i + 1]
         if arg == "-f" and i + 1 < len(build_args):
             dockerfile_str = build_args[i + 1]
-    dockerfile_path = f"{build_args[-1]}/{dockerfile_str}"
-
-    with open(dockerfile_path) as f:
-        base_tag = f.read().split("\n")[0].strip().replace("FROM ", "")
-
+        if arg == "--diff":
+            do_diff = True
+            build_args[i] = ""
+    if container_runtime == "docker":
+        build_args.append("--provenance=false")
     assert not target_tag is None
 
-    print_debug(f"Building image with tag: {target_tag}\nwe will diff image blobs of {target_tag} from {base_tag}")
+    # Fall back to docker build
+    print_debug(f"Building image with tag: {target_tag}")
     run_command(f"{container_runtime} build " + " ".join(build_args))
-    print_debug(f"Diff image blobs of {target_tag} from {base_tag}")
-    diff_image(base_tag, target_tag)
+
+    # ddiff diff
+    if do_diff:
+        dockerfile_path = f"{build_args[-1]}/{dockerfile_str}"
+        with open(dockerfile_path) as f:
+            base_tag = f.read().split("\n")[0].strip().replace("FROM ", "")
+        print_debug(f"Diff image blobs of {target_tag} from {base_tag}")
+        diff_image(base_tag, target_tag)
 
 def list_blobs(tag):
     push_images([tag])

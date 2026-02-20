@@ -1,2 +1,2 @@
 FROM ddiff-test/base
-RUN apt-get update && apt-get install -y --no-install-recommends tmux && rm -rf /var/lib/apt/lists/*
+RUN echo "Hello DockerDiff!" > hello_ddiff.txt

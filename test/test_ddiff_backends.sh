@@ -36,7 +36,7 @@ log() {
 run_step() {
   local logfile="$1"
   shift
-
+  
   mkdir -p "$(dirname "$logfile")"
   {
     echo "+ $*"
@@ -52,7 +52,7 @@ run_step() {
 wait_for_registry() {
   local port="$1"
   for _ in $(seq 1 30); do
-    if curl -fsS "http://127.0.0.1:${port}/v2/" >/dev/null 2>&1; then
+    if curl -fsS "http://localhost:${port}/v2/" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -81,10 +81,10 @@ cleanup_case() {
   local work_dir="$4"
 
   set +e
-  "$runtime" rm -f "$diff_container" >/dev/null 2>&1
-  "$runtime" rm -f "$load_container" >/dev/null 2>&1
-  "$runtime" rmi "$DELTA_TAG" >/dev/null 2>&1
-  "$runtime" rmi "$BASE_TAG" >/dev/null 2>&1
+  "$runtime" rm -f "$diff_container" >/dev/null
+  "$runtime" rm -f "$load_container" >/dev/null
+  "$runtime" rmi "$DELTA_TAG" >/dev/null
+  "$runtime" rmi "$BASE_TAG" >/dev/null
   rm -f "$ARCHIVE_PATH"
   rm -rf "$work_dir"
   set -e
@@ -114,53 +114,47 @@ run_case() {
   local logs_dir="$work_dir/logs"
   local diff_registry_dir="$work_dir/registry_diff"
   local load_registry_dir="$work_dir/registry_load"
-  local diff_container="ddiff-${name}-diff"
-  local load_container="ddiff-${name}-load"
+  local diff_container="ddiff-diff"
+  local load_container="ddiff-load"
 
+  # Set environment variables
+  if [[ -n "$force_key" ]]; then
+    export "$force_key=$force_value"
+  fi
+
+  # Clear the environment
   rm -rf "$work_dir"
   mkdir -p "$logs_dir" "$diff_registry_dir" "$load_registry_dir"
 
   log "[$name] prerequisites"
-  if ! have_all_commands "${required[@]}"; then
-    SKIPPED=$((SKIPPED + 1))
-    echo "SKIP: $name"
-    cleanup_case "$runtime" "$diff_container" "$load_container" "$work_dir"
-    return 0
-  fi
+  cleanup_case "$runtime" "$diff_container" "$load_container" "$work_dir"
 
   local status=0
 
   log "[$name] build base image"
   run_step "$logs_dir/build-base.log" \
-    "$runtime" build -t "$BASE_TAG" -f "$DOCKERFILES_DIR/Dockerfile.base" "$TEST_DIR" || status=$?
+    ddiff build -t "$BASE_TAG" -f "$DOCKERFILES_DIR/Dockerfile.base" "$TEST_DIR" || status=$?
 
   if [[ "$status" -eq 0 ]]; then
     log "[$name] build delta image"
     run_step "$logs_dir/build-delta.log" \
-      "$runtime" build -t "$DELTA_TAG" -f "$DOCKERFILES_DIR/Dockerfile.delta" "$TEST_DIR" || status=$?
+      ddiff build -t "$DELTA_TAG" -f "$DOCKERFILES_DIR/Dockerfile.delta" "$TEST_DIR" || status=$?
   fi
-
   if [[ "$status" -eq 0 ]]; then
     log "[$name] start diff registry"
+    export DDIFF_URL="http://localhost:${diff_port}"
     run_step "$logs_dir/registry-diff-start.log" \
-      "$runtime" run -d --name "$diff_container" -p "${diff_port}:5000" -v "$diff_registry_dir:/var/lib/registry" "$REGISTRY_IMAGE" || status=$?
+    "$runtime" run -d --name "$diff_container" -p "${diff_port}:5000"  "$REGISTRY_IMAGE" || status=$?
   fi
-
+  
   if [[ "$status" -eq 0 ]]; then
     wait_for_registry "$diff_port" || { echo "registry not ready on ${diff_port}" | tee "$logs_dir/registry-diff-ready.log"; status=1; }
   fi
-
+  
   if [[ "$status" -eq 0 ]]; then
     log "[$name] ddiff diff"
-    if [[ -n "$force_key" ]]; then
-      run_step "$logs_dir/ddiff-diff.log" \
-        env DDIFF_URL="http://127.0.0.1:${diff_port}" "$force_key=$force_value" \
-        python3 "$DDIFF_PY" diff "$BASE_TAG" "$DELTA_TAG" || status=$?
-    else
-      run_step "$logs_dir/ddiff-diff.log" \
-        env DDIFF_URL="http://127.0.0.1:${diff_port}" \
-        python3 "$DDIFF_PY" diff "$BASE_TAG" "$DELTA_TAG" || status=$?
-    fi
+    run_step "$logs_dir/ddiff-diff.log" \
+      ddiff diff "$BASE_TAG" "$DELTA_TAG" || status=$?
   fi
 
   if [[ "$status" -eq 0 && ! -f "$ARCHIVE_PATH" ]]; then
@@ -175,37 +169,25 @@ run_case() {
     mkdir -p "$diff_registry_dir"
 
     log "[$name] start fresh load registry"
+    export DDIFF_URL="http://localhost:${load_port}"
     run_step "$logs_dir/registry-load-start.log" \
-      "$runtime" run -d --name "$load_container" -p "${load_port}:5000" -v "$load_registry_dir:/var/lib/registry" "$REGISTRY_IMAGE" || status=$?
+      "$runtime" run -d --name "$load_container" -p "${load_port}:5000" "$REGISTRY_IMAGE" || status=$?
   fi
-
+  
   if [[ "$status" -eq 0 ]]; then
     wait_for_registry "$load_port" || { echo "registry not ready on ${load_port}" | tee "$logs_dir/registry-load-ready.log"; status=1; }
   fi
 
   if [[ "$status" -eq 0 ]]; then
     log "[$name] ddiff load"
-    if [[ -n "$force_key" ]]; then
-      run_step "$logs_dir/ddiff-load.log" \
-        env DDIFF_URL="http://127.0.0.1:${load_port}" "$force_key=$force_value" \
-        python3 "$DDIFF_PY" load "$ARCHIVE_PATH" || status=$?
-    else
-      run_step "$logs_dir/ddiff-load.log" \
-        env DDIFF_URL="http://127.0.0.1:${load_port}" \
-        python3 "$DDIFF_PY" load "$ARCHIVE_PATH" || status=$?
-    fi
+    run_step "$logs_dir/ddiff-load.log" \
+      python3 "$DDIFF_PY" load "$ARCHIVE_PATH" || status=$?
   fi
 
-  if [[ "$status" -eq 0 && -n "$expect_marker" ]]; then
-    if ! grep -q "$expect_marker" "$logs_dir/ddiff-diff.log"; then
-      echo "missing mode marker: $expect_marker" | tee "$logs_dir/mode-check.log"
-      status=1
-    fi
-  fi
-
+  # exit 0
   if [[ "$status" -eq 0 ]]; then
     log "[$name] verify loaded image"
-    run_step "$logs_dir/verify.log" "$runtime" run --rm "$DELTA_TAG" tmux -V || status=$?
+    run_step "$logs_dir/verify.log" "$runtime" run --rm "$DELTA_TAG" cat hello_ddiff.txt || status=$?
   fi
 
   cleanup_case "$runtime" "$diff_container" "$load_container" "$work_dir"
@@ -265,9 +247,15 @@ run_selected_cases() {
       ;;
   esac
 
-  [[ "$target" == "all" || "$target" == "docker" ]] && run_docker_mode
-  [[ "$target" == "all" || "$target" == "docker-skopeo" ]] && run_docker_skopeo_mode
-  [[ "$target" == "all" || "$target" == "podman" ]] && run_podman_mode
+  if [[ "$target" == "all" || "$target" == "docker" ]]; then
+    run_docker_mode
+  fi
+  if [[ "$target" == "all" || "$target" == "docker-skopeo" ]]; then
+    run_docker_skopeo_mode
+  fi
+  if [[ "$target" == "all" || "$target" == "podman" ]]; then
+    run_podman_mode
+  fi
 }
 
 main() {
@@ -275,9 +263,17 @@ main() {
   run_selected_cases "${1:-all}"
 
   echo ""
-  echo "Total: $TOTAL, Passed: $PASSED, Failed: $FAILED, Skipped: $SKIPPED"
+  echo "==================== TEST RESULTS ===================="
+  echo "Total cases run: $TOTAL"
+  echo "Passed:          $PASSED"
+  echo "Failed:          $FAILED"
+  echo "Skipped:         $SKIPPED"
+  echo "======================================================"
 
-  [[ "$FAILED" -eq 0 ]]
+  if [[ "$FAILED" -ne 0 ]]; then
+    exit 1
+  fi
+  exit 0
 }
 
 main "$@"

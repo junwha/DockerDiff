@@ -83,7 +83,7 @@ For more details, visit [dockerfiles](dockerfiles)
 
 # Requirements
 - Python 3.X
-- (optional, if you use podman) skopeo
+- (optional, if you use podman) [skopeo](https://github.com/containers/skopeo)
 
 # Registry/API compatibility
 - Docker Registry HTTP API V2 endpoints are used (`/v2/<name>/manifests/<reference>`, `/v2/<name>/blobs/<digest>`).

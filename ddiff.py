@@ -224,7 +224,7 @@ def push_images(tags, from_docker_hub=False):
         registry_tag = f"{ddiff_url_base}/{_prepare_tag(host_tag)}"
         if push_pull_with_skopeo:
             run_command(
-                f"skopeo copy --dest-tls-verify=false --format=v2s2 "
+                f"skopeo copy --dest-tls-verify=false --format=v2s2 {'--preserve-digests' if from_docker_hub else ''}"
                 f"{_skopeo_source_ref(host_tag, from_docker_hub=from_docker_hub)} docker://{registry_tag}"
             )
         else:

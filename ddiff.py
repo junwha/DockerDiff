@@ -252,7 +252,7 @@ def pull_images(tags):
 
 def diff_image(base_tag, target_tag):
     push_images([base_tag], from_docker_hub=True)
-    push_images(target_tag)
+    push_images([target_tag])
 
     base_tag = _prepare_tag(base_tag)
     target_tag = _prepare_tag(target_tag)

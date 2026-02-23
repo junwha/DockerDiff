@@ -207,21 +207,25 @@ def run_registry():
     cmd = f"{container_runtime} run -it -d -p{ddiff_port}:5000 {volume_arg} --name {ddiff_container_name}{tls_verify_flag} registry:2.8.3"
     run_command(cmd)
 
-def _skopeo_source_ref(host_tag):
+def _skopeo_source_ref(host_tag, from_docker_hub):
     """Return the correct skopeo source transport:reference for Podman."""
     # Podman stores short names under the localhost/ prefix in containers-storage
-    if not host_tag.startswith("localhost/"):
-        host_tag = f"localhost/{host_tag}"
-    return f"containers-storage:{host_tag}"
 
-def push_images(tags):
+    if from_docker_hub:
+        return f"docker://docker.io/{host_tag}"
+    else:
+        if not host_tag.startswith("localhost/"):
+            host_tag = f"localhost/{host_tag}"
+        return f"containers-storage:{host_tag}"
+
+def push_images(tags, from_docker_hub=False):
     print_debug("Pushing to the registry...")
     for host_tag in tags:
         registry_tag = f"{ddiff_url_base}/{_prepare_tag(host_tag)}"
         if push_pull_with_skopeo:
             run_command(
                 f"skopeo copy --dest-tls-verify=false --format=v2s2 "
-                f"{_skopeo_source_ref(host_tag)} docker://{registry_tag}"
+                f"{_skopeo_source_ref(host_tag, from_docker_hub=from_docker_hub)} docker://{registry_tag}"
             )
         else:
             assert container_runtime == "docker", "Only docker is supported without skopeo"
@@ -247,7 +251,8 @@ def pull_images(tags):
     # print_debug("Done.")
 
 def diff_image(base_tag, target_tag):
-    push_images([base_tag, target_tag])
+    push_images([base_tag], from_docker_hub=True)
+    push_images(target_tag)
 
     base_tag = _prepare_tag(base_tag)
     target_tag = _prepare_tag(target_tag)

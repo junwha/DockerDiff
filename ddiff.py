@@ -369,6 +369,9 @@ def build_image(build_args):
             build_args[i] = ""
     # if container_runtime == "docker":
     #     build_args.append("--provenance=false")
+    if container_runtime == "podman":
+        build_args.append("--format docker")
+
     assert not target_tag is None
 
     # Fall back to docker build

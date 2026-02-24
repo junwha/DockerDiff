@@ -65,12 +65,13 @@ source ~/.bashrc
 **Usage**: `ddiff <command> <args...>`
 
 **Commands**
-  - `server`                      - Run the registry server
+  - `server`                      - Run the registry server (delete API + GC enabled)
   - `push` `<tag 1> ... <tag n>`   - Push one or more images
   - `pull` `<tag 1> ... <tag n>`    - Pull one or more images
   - `diff` `<base> <target>`       - Diff the target image from the base image
-  - `load` `<tar file>`             - Load the target image from diff file
+  - `load` `(<base tag>) <tar file> [--delete]` - Load the target image from diff file and optionally delete it from registry
   - `build` `<args>`                - Build the image and diff from base (FROM ...)
+  - `delete` `<tag>`                 - Delete one image tag from the registry and run garbage collection
 
 # Docker base images
 For easier sharing of base images, DockerDiff provides several pre-configured base images. 

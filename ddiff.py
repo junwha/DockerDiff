@@ -110,6 +110,27 @@ def _request_manifest(tag):
         print_error(f"HTTP error: {e.code} - {e.reason} ({manifest_url})")
     except Exception as e:
         print_error(f"Error: {e} ({manifest_url})")
+
+
+def _request_manifest_digest(tag):
+    if "@" in tag:
+        repo, reference = tag.split("@", 1)
+    else:
+        repo, reference = tag.split(":", 1)
+    manifest_url = f"{ddiff_url}/v2/{repo}/manifests/{reference}"
+
+    req = urllib.request.Request(manifest_url)
+    req.add_header("Accept", ACCEPT_MANIFEST_TYPES)
+    try:
+        with urllib.request.urlopen(req) as response:
+            digest = response.getheader("Docker-Content-Digest")
+            if not digest:
+                print_error(f"Could not resolve manifest digest from response headers ({manifest_url})")
+            return digest
+    except urllib.error.HTTPError as e:
+        print_error(f"HTTP error: {e.code} - {e.reason} ({manifest_url})")
+    except Exception as e:
+        print_error(f"Error: {e} ({manifest_url})")
     
 def _validate_manifest_media_type(manifest):
     media_type = manifest.get("mediaType", "")
@@ -201,11 +222,39 @@ def _upload_manifest(tag, manifest_path, manifest_media_type=DOCKER_MANIFEST_V2)
         print_error(f"Manifest upload failed: {e.code} {e.reason} ({url})")
 
 def run_registry():
-    volume_arg = "" if ddiff_register_volume is None else f"-v{ddiff_register_volume}:/var/lib/registry"
+    volume_arg = ""
+    if ddiff_register_volume is not None:
+        Path(ddiff_register_volume).mkdir(parents=True, exist_ok=True)
+        volume_arg = f"-v{ddiff_register_volume}:/var/lib/registry"
 
     tls_verify_flag = " --tls-verify=false" if container_runtime == "podman" else ""
-    cmd = f"{container_runtime} run -it -d -p{ddiff_port}:5000 {volume_arg} --name {ddiff_container_name}{tls_verify_flag} registry:2.8.3"
+    cmd = (
+        f"{container_runtime} run -d -p{ddiff_port}:5000 {volume_arg} "
+        f"-e REGISTRY_STORAGE_DELETE_ENABLED=true "
+        f"--name {ddiff_container_name}{tls_verify_flag} registry:2.8.3"
+    )
     run_command(cmd)
+
+
+def delete_image(tag):
+    prepared_tag = _prepare_tag(tag)
+    repo = prepared_tag.split(":", 1)[0]
+    digest = _request_manifest_digest(prepared_tag)
+    delete_url = f"{ddiff_url}/v2/{repo}/manifests/{digest}"
+
+    req = urllib.request.Request(delete_url, method="DELETE")
+    try:
+        with urllib.request.urlopen(req) as res:
+            if res.status not in [202]:
+                print_error(f"Delete failed for {prepared_tag}: unexpected status {res.status} ({delete_url})")
+            print_debug(f"Deleted manifest for {prepared_tag} ({digest})")
+    except urllib.error.HTTPError as e:
+        print_error(f"Delete failed for {prepared_tag}: {e.code} {e.reason} ({delete_url})")
+
+    config_path = "/etc/docker/registry/config.yml"
+    gc_cmd = f"{container_runtime} exec {ddiff_container_name} registry garbage-collect {config_path}"
+    run_command(gc_cmd)
+    print_debug("Registry garbage collection completed.")
 
 def _skopeo_source_ref(host_tag, from_docker_hub):
     """Return the correct skopeo source transport:reference for Podman."""
@@ -301,7 +350,7 @@ def diff_image(base_tag, target_tag):
     print_debug(f"Done. Load the output image archive {archive_name} in the offline (ddiff load {archive_name})")
     print_debug(f"{archive_name}")
 
-def load_image(base_tag, image_tarball):
+def load_image(base_tag, image_tarball, delete_after_load=False):
     input_dir = ".ddiff-image"
     shutil.rmtree(input_dir, ignore_errors=True)
     with tarfile.open(image_tarball) as tar:
@@ -357,6 +406,9 @@ def load_image(base_tag, image_tarball):
         print_debug(f"The image {target_tag} is sucessfully pulled on the host.\nIf you will not inherit {target_tag} in future, you can delete the image.")
     else:
         print_debug(f"The image {target_tag} is sucessfully pulled on the host.")
+
+    if delete_after_load:
+        delete_image(target_tag)
 
 def build_image(build_args):
     target_tag = None
@@ -414,7 +466,7 @@ if __name__ == '__main__':
         else:
             print_debug("Docker command not found. Switching to podman mode.")
 
-    if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list"]:
+    if len(sys.argv) < 2 or not sys.argv[1] in ["server", "push", "pull", "diff", "load", "build", "list", "delete"]:
         print("Usage: ddiff [command] [args...]")
         print("Commands:")
         print("  server                       - Run the registry server (set DDIFF_REGISTRY_VOLUME)")
@@ -422,6 +474,7 @@ if __name__ == '__main__':
         print("  pull <tag 1> ... <tag n>     - Pull one or more images")
         print("  diff <base> <target>         - Diff the target image from the base image")
         print("  load (<base tag>) <tar file> - Load the target image from diff file")
+        print("  delete <tag>                 - Delete an image from the registry and run GC")
         print("  build <args>                 - Build the image and diff from base (FROM ...)")
         print("  list <tag>                   - List up blobs of the given image")
         sys.exit(1)
@@ -450,13 +503,23 @@ if __name__ == '__main__':
             sys.exit(1)
         diff_image(args[0], args[1])
     elif command == "load":
+        delete_after_load = False
+        if "--delete" in args:
+            delete_after_load = True
+            args = [arg for arg in args if arg != "--delete"]
+
         if len(args) > 2:
-            print("Usage: python3 ddiff.py load <base tag> <tar_file> or python3 ddiff.py load <tar_file>")
+            print("Usage: python3 ddiff.py load <base tag> <tar_file> [--delete] or python3 ddiff.py load <tar_file> [--delete]")
             sys.exit(1)
         elif len(args) == 2:
-            load_image(args[0], args[1])
+            load_image(args[0], args[1], delete_after_load=delete_after_load)
         elif len(args) == 1:
-            load_image(None, args[0])
+            load_image(None, args[0], delete_after_load=delete_after_load)
+    elif command == "delete":
+        if len(args) != 1:
+            print("Usage: python3 ddiff.py delete <tag>")
+            sys.exit(1)
+        delete_image(args[0])
     elif command == "build":
         if len(args) < 1:
             print("Usage: python3 ddiff.py build <docker build args>")

@@ -341,22 +341,19 @@ def load_image(base_tag, image_tarball):
 
     shutil.rmtree(input_dir)
 
-    if "localhost" in ddiff_url:
-        print_debug("Pulling image from the registry...")
-        registry_tag = f"{ddiff_url_base}/{target_tag}"
-        if push_pull_with_skopeo:
-            run_command(
-                f"skopeo copy --src-tls-verify=false "
-                f"docker://{registry_tag} {_skopeo_source_ref(target_tag)}"
-            )
-        else:
-            assert container_runtime == "docker", "Only docker is supported without skopeo"
-            run_command(f"docker pull {registry_tag}")
-            run_command(f"docker tag {registry_tag} {target_tag}")
-            run_command(f"docker rmi {registry_tag}")
-        print_debug(f"The image {target_tag} is sucessfully pulled on the host.\nIf you will not inherit {target_tag} in future, you can delete the image.")
+    print_debug("Pulling image from the registry...")
+    registry_tag = f"{ddiff_url_base}/{target_tag}"
+    if push_pull_with_skopeo:
+        run_command(
+            f"skopeo copy --src-tls-verify=false "
+            f"docker://{registry_tag} {_skopeo_source_ref(target_tag)}"
+        )
     else:
-        print_debug(f"The image {target_tag} is sucessfully pulled on the host.")
+        assert container_runtime == "docker", "Only docker is supported without skopeo"
+        run_command(f"docker pull {registry_tag}")
+        run_command(f"docker tag {registry_tag} {target_tag}")
+        run_command(f"docker rmi {registry_tag}")
+    print_debug(f"The image {target_tag} is sucessfully pulled on the host.\nIf you will not inherit {target_tag} in future, you can delete the image.")
 
 def build_image(build_args):
     target_tag = None

@@ -359,14 +359,18 @@ def build_image(build_args):
     target_tag = None
     dockerfile_str = "Dockerfile"
     do_diff = False
+    diff_arg_idx = None
     for i, arg in enumerate(build_args):
         if arg == "-t" and i + 1 < len(build_args):
             target_tag = build_args[i + 1]
         if arg == "-f" and i + 1 < len(build_args):
             dockerfile_str = build_args[i + 1]
         if arg == "--diff":
-            do_diff = True
-            build_args[i] = ""
+            diff_arg_idx = i
+    if diff_arg_idx:
+        do_diff = True
+        del build_args[diff_arg_idx]
+    
     # if container_runtime == "docker":
     #     build_args.append("--provenance=false")
     if container_runtime == "podman":
